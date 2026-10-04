@@ -1,7 +1,6 @@
 const tg = window.Telegram?.WebApp || null;
 if (tg) {
-  tg.ready();
-  try { tg.expand(); tg.setHeaderColor('#09080f'); tg.setBackgroundColor('#09080f'); } catch {}
+  try { tg.ready(); tg.expand(); tg.setHeaderColor('#09080f'); tg.setBackgroundColor('#09080f'); } catch {}
 }
 
 const $ = (id) => document.getElementById(id);
@@ -10,7 +9,6 @@ const panelIcon = $('panelIcon');
 const panelTitle = $('panelTitle');
 const panelSub = $('panelSub');
 const panelBody = $('panelBody');
-const menuGrid = $('menuGrid');
 const contentPanel = $('contentPanel');
 const heroSlides = [...document.querySelectorAll('.hero-slide')];
 const dots = $('dots');
@@ -51,45 +49,58 @@ function setCurrentOrder(order){ localStorage.setItem('ragion_current_order', JS
 function getOrderHistory(){ try{return JSON.parse(localStorage.getItem('ragion_orders')||'[]')}catch{return []} }
 function saveOrderHistory(order){ const list=getOrderHistory(); const filtered=list.filter(o=>o.id!==order.id); filtered.unshift(order); localStorage.setItem('ragion_orders', JSON.stringify(filtered.slice(0,20))); }
 
-// --- Voice: direct user gesture first, TTS fallback second. ---
-function googleVoiceUrl(text){
-  return `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=id&q=${encodeURIComponent(text)}`;
+const remoteVoices = new Map();
+function prepareRemoteVoice(text){
+  if (remoteVoices.has(text)) return remoteVoices.get(text);
+  const audio = new Audio(`https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=id&q=${encodeURIComponent(text)}`);
+  audio.preload = 'auto';
+  audio.volume = 1;
+  remoteVoices.set(text, audio);
+  try { audio.load(); } catch {}
+  return audio;
+}
+['Order','Harga','Profil','Pesanan','Payment','Info','Menu utama','Beli sekarang'].forEach(prepareRemoteVoice);
+
+function localSpeak(label){
+  if(!soundEnabled || !('speechSynthesis' in window)) return false;
+  try {
+    window.speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(label);
+    u.lang = 'id-ID';
+    u.rate = 0.78;
+    u.pitch = 1.38;
+    u.volume = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => /female|feminine|id[-_]ID/i.test(`${v.name} ${v.lang}`));
+    if (preferred) u.voice = preferred;
+    window.speechSynthesis.speak(u);
+    return true;
+  } catch { return false; }
 }
 function speakMenu(label){
   if(!soundEnabled) return;
-  // Remote speech starts immediately from the click gesture when possible.
+  const audio = prepareRemoteVoice(label);
+  let played = false;
   try {
-    const audio = new Audio(googleVoiceUrl(label));
-    audio.volume = 1;
-    audio.play().catch(()=>{});
+    audio.pause(); audio.currentTime = 0;
+    const p = audio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+    played = true;
   } catch {}
-  // Local device voice fallback.
-  if ('speechSynthesis' in window) {
-    try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(label);
-      u.lang = 'id-ID';
-      u.rate = 0.78;
-      u.pitch = 1.35;
-      u.volume = 1;
-      const voices = window.speechSynthesis.getVoices();
-      const idVoice = voices.find(v => /^id[-_]/i.test(v.lang));
-      if (idVoice) u.voice = idVoice;
-      window.speechSynthesis.speak(u);
-    } catch {}
-  }
+  // Also trigger device speech directly from the tap. It will speak when audio fallback is unavailable.
+  localSpeak(label);
 }
 function haptic(){ try{tg?.HapticFeedback?.impactOccurred('light')}catch{} }
 
 function renderHome(){
-  return `<div class="welcome-copy"><div class="badge">✦ PREMIUM DIGITAL STORE</div><h2>Semua kebutuhan digital dalam satu tempat.</h2><p>Website profesional · Tools AI · Produk digital · Layanan premium.</p></div><div class="action-row"><button class="action" data-menu="order">🛍️ ORDER SEKARANG</button><button class="action ghost" data-menu="price">💰 LIHAT HARGA</button></div>`;
+  return `<div class="welcome-copy"><div class="badge">✦ PREMIUM DIGITAL STORE</div><h2>Semua kebutuhan digital dalam satu tempat.</h2><p>Website profesional · Tools AI · Produk digital · Layanan premium.</p></div><div class="action-row"><button class="action" data-menu="order" data-label="Order">🛍️ ORDER SEKARANG</button><button class="action ghost" data-menu="price" data-label="Harga">💰 LIHAT HARGA</button></div>`;
 }
 function renderProducts(withBuy=true){
-  return `<div class="product-list">${products.map(p=>`<div class="product"><div class="meta"><b>${escapeHtml(p.name)}</b><span>${escapeHtml(p.desc)}</span></div><div class="product-right"><strong>${p.price}</strong>${withBuy?`<button class="buy-btn" data-buy="${p.id}" data-label="Beli ${escapeHtml(p.name)}">BELI SEKARANG</button>`:''}</div></div>`).join('')}</div>`;
+  return `<div class="product-list">${products.map(p=>`<div class="product"><div class="meta"><b>${escapeHtml(p.name)}</b><span>${escapeHtml(p.desc)}</span></div><div class="product-right"><strong>${p.price}</strong>${withBuy?`<button class="buy-btn" type="button" data-buy="${p.id}" aria-label="Beli ${escapeHtml(p.name)}">BELI SEKARANG</button>`:''}</div></div>`).join('')}</div>`;
 }
 function renderOrders(){
   const list=getOrderHistory();
-  if(!list.length) return `<div class="empty">Belum ada pesanan. Pilih produk di menu <b>ORDER</b>.</div><div class="action-row"><button class="action" data-menu="order">🛍️ PILIH PRODUK</button></div>`;
+  if(!list.length) return `<div class="empty">Belum ada pesanan. Pilih produk di menu <b>ORDER</b>.</div><div class="action-row"><button class="action" data-menu="order" data-label="Order">🛍️ PILIH PRODUK</button></div>`;
   return `<div class="order-history">${list.map(o=>`<div class="history-item"><div><b>${escapeHtml(o.productName)}</b><small>${escapeHtml(o.id)} · ${escapeHtml(o.status)}</small></div><strong>${escapeHtml(o.amountLabel)}</strong></div>`).join('')}</div>`;
 }
 function renderProfile(){
@@ -100,14 +111,14 @@ function renderProfile(){
 function renderPayment(){
   const o=getCurrentOrder();
   const summary=o?`<div class="pay-summary"><span>ORDER ID</span><b>${escapeHtml(o.id)}</b><span>PRODUK</span><b>${escapeHtml(o.productName)}</b><span>TOTAL</span><b>${escapeHtml(o.amountLabel)}</b></div>`:`<div class="empty">Belum ada produk dipilih. Kembali ke <b>ORDER</b> lalu tekan <b>BELI SEKARANG</b>.</div>`;
-  return `<div class="payment-card">${summary}<img class="qris" src="https://files.catbox.moe/7rheyw.png" alt="QRIS RAGION SHOP"><div class="payment-note">Scan QRIS, selesaikan pembayaran, lalu upload bukti transfer.</div><div class="upload-box"><input id="proofFile" type="file" accept="image/*,.pdf" hidden><button class="action ghost" id="chooseProof" type="button">📎 PILIH BUKTI TRANSFER</button><div class="file-name" id="fileName">Belum ada file dipilih.</div><button class="action" id="uploadProof" type="button" ${o?'':'disabled'}>📤 KIRIM BUKTI KE ADMIN</button><div class="upload-status" id="uploadStatus"></div></div></div>`;
+  return `<div class="payment-card">${summary}<img class="qris" src="https://files.catbox.moe/7rheyw.png" alt="QRIS RAGION SHOP"><div class="payment-note">Scan QRIS, selesaikan pembayaran, lalu upload bukti transfer.</div><div class="upload-box"><input id="proofFile" class="proof-input" type="file" accept="image/*,.pdf" aria-label="Pilih bukti pembayaran"><label class="action ghost choose-label" for="proofFile">📎 PILIH BUKTI TRANSFER</label><div class="file-name" id="fileName">Belum ada file dipilih.</div><button class="action" id="uploadProof" type="button" ${o?'':'disabled'}>📤 KIRIM BUKTI KE ADMIN</button><div class="upload-status" id="uploadStatus"></div></div></div>`;
 }
 function renderInfo(){ return `<div class="empty">RAGION SHOP menyediakan <b style="color:#fff">Website · Tools AI · Produk Digital · Layanan Premium</b>.<br><br>Pilih produk, lakukan pembayaran via QRIS, lalu kirim bukti transfer untuk konfirmasi admin.</div>`; }
 
 function bodyFor(menu){
   switch(menu){
-    case 'order': return renderProducts(true);
-    case 'price': return renderProducts(false)+`<div class="action-row"><button class="action" data-menu="order">🛍️ BELI SEKARANG</button></div>`;
+    case 'order': return renderProducts(true)+`<div class="action-row"><button class="action" data-menu="payment" data-label="Payment">💳 LANJUT PAYMENT</button></div>`;
+    case 'price': return renderProducts(false)+`<div class="action-row"><button class="action" data-menu="order" data-label="Order">🛍️ BELI SEKARANG</button></div>`;
     case 'orders': return renderOrders();
     case 'profile': return renderProfile();
     case 'payment': return renderPayment();
@@ -116,7 +127,7 @@ function bodyFor(menu){
   }
 }
 
-function render(menu='home', announce=true){
+function render(menu='home',announce=true){
   const m=menuMeta[menu]||menuMeta.home;
   contentPanel.classList.remove('panel-pop'); void contentPanel.offsetWidth; contentPanel.classList.add('panel-pop');
   panelIcon.textContent=m.icon; panelTitle.textContent=m.title; panelSub.textContent=m.sub; panelBody.innerHTML=bodyFor(menu);
@@ -131,13 +142,12 @@ function selectProduct(productId){
   const product=products.find(p=>p.id===productId); if(!product)return;
   const user=tg?.initDataUnsafe?.user||{};
   const order={id:`RG-${Date.now().toString(36).toUpperCase()}`,productId:product.id,productName:product.name,amount:product.amount,amountLabel:product.price,status:'MENUNGGU PEMBAYARAN',userId:user.id||null,username:user.username||'',firstName:user.first_name||'',createdAt:new Date().toISOString()};
-  setCurrentOrder(order); saveOrderHistory(order); render('payment',true);
+  selectedFile=null; setCurrentOrder(order); saveOrderHistory(order); render('payment',true);
 }
 
 function bindPaymentUI(){
-  const input=$('proofFile'), choose=$('chooseProof'), upload=$('uploadProof'), fileName=$('fileName'), status=$('uploadStatus');
-  if(!input||!choose||!upload)return;
-  choose.onclick=()=>input.click();
+  const input=$('proofFile'), upload=$('uploadProof'), fileName=$('fileName'), status=$('uploadStatus');
+  if(!input||!upload)return;
   input.onchange=()=>{ selectedFile=input.files?.[0]||null; fileName.textContent=selectedFile?.name||'Belum ada file dipilih.'; };
   upload.onclick=async()=>{
     const file=selectedFile||input.files?.[0]||null;
@@ -145,18 +155,18 @@ function bindPaymentUI(){
     if(!order){ status.textContent='⚠️ Pilih produk terlebih dahulu.'; return; }
     if(!file){ status.textContent='⚠️ Pilih bukti transfer terlebih dahulu.'; return; }
     if(!tg?.initData){ status.textContent='⚠️ Buka Mini App dari tombol Telegram agar akun pembeli dapat diverifikasi.'; return; }
-    if(file.size>10*1024*1024){ status.textContent='⚠️ Ukuran file maksimal 10 MB.'; return; }
-    choose.disabled=true; upload.disabled=true; status.textContent='⏳ Mengirim bukti transfer ke admin...';
+    if(file.size>4*1024*1024){ status.textContent='⚠️ File maksimal 4 MB untuk pengiriman aman.'; return; }
+    upload.disabled=true; status.textContent='⏳ Mengirim bukti transfer ke admin...';
     try{
       const fd=new FormData();
       fd.append('proof',file,file.name); fd.append('initData',tg.initData); fd.append('orderId',order.id); fd.append('productName',order.productName); fd.append('amount',order.amountLabel);
-      const response=await fetch('/api/payment-proof',{method:'POST',body:fd,headers:{'X-Ragion-App':'miniapp-v5'}});
+      const response=await fetch('/api/payment-proof',{method:'POST',body:fd});
       const result=await response.json().catch(()=>({ok:false,message:'Respons server tidak valid.'}));
       if(!response.ok||!result.ok) throw new Error(result.message||'Upload gagal.');
       order.status='MENUNGGU KONFIRMASI ADMIN'; setCurrentOrder(order); saveOrderHistory(order);
       status.textContent='✅ Bukti berhasil dikirim ke admin. Menunggu konfirmasi.'; upload.textContent='✅ BUKTI SUDAH TERKIRIM';
     }catch(err){ status.textContent=`❌ ${err.message||'Gagal mengirim bukti.'}`; }
-    finally{ choose.disabled=false; upload.disabled=false; }
+    finally{ upload.disabled=false; }
   };
 }
 
@@ -168,16 +178,11 @@ document.addEventListener('click',e=>{
   const target=menu.dataset.menu;
   const label=menu.dataset.label || menuMeta[target]?.speech || 'Menu';
   speakMenu(label);
-  if(target==='home') render('home',false); else render(target,false);
+  render(target,false);
 });
 miniBack.onclick=()=>render('home',true);
-soundToggle.onclick=()=>{
-  soundEnabled=!soundEnabled; soundToggle.textContent=soundEnabled?'🔊':'🔇';
-  if(!soundEnabled&&'speechSynthesis'in window) window.speechSynthesis.cancel();
-  if(soundEnabled) speakMenu('Suara aktif');
-};
+soundToggle.onclick=()=>{ soundEnabled=!soundEnabled; soundToggle.textContent=soundEnabled?'🔊':'🔇'; if(!soundEnabled&&'speechSynthesis'in window) window.speechSynthesis.cancel(); if(soundEnabled) speakMenu('Suara aktif'); };
 
-// Banner slider: client-side only, no Telegram API calls.
 heroSlides.forEach((_,i)=>{const d=document.createElement('span');d.className='dot'+(i===0?' active':'');dots.appendChild(d)});
 function showSlide(i){
   slideIndex=(i+heroSlides.length)%heroSlides.length;
@@ -194,14 +199,8 @@ const palettes=[
   [['#ff2d55','#ffcc00'],['#af52de','#5856d6'],['#30d158','#00c7be'],['#ff9f0a','#ff375f'],['#007aff','#af52de'],['#00c7be','#0a84ff']],
   [['#7c4dff','#12d9ff'],['#ff2d78','#ff7a2f'],['#00b8d9','#14d77c'],['#ff9500','#ff2d55'],['#2678ff','#9c3eff'],['#0fbf9d','#703cff']]
 ];
-function applyPalette(){
-  const p=palettes[paletteIndex%palettes.length];
-  document.querySelectorAll('.menu-card').forEach((b,i)=>{
-    const [a,c]=p[i%p.length]; b.style.backgroundImage=`linear-gradient(135deg,${a},${c})`;
-  });
-}
+function applyPalette(){ const p=palettes[paletteIndex%palettes.length]; document.querySelectorAll('.menu-card').forEach((b,i)=>{const [a,c]=p[i%p.length]; b.style.backgroundImage=`linear-gradient(135deg,${a},${c})`;}); }
 applyPalette(); setInterval(()=>{paletteIndex++;applyPalette();},PALETTE_MS);
-
-setTimeout(()=>{splash.style.opacity='0'; splash.style.pointerEvents='none'; splash.style.transition='opacity .5s ease'; setTimeout(()=>splash.remove(),550)},1500);
+setTimeout(()=>{splash.style.opacity='0';splash.style.pointerEvents='none';splash.style.transition='opacity .5s ease';setTimeout(()=>splash.remove(),550)},1500);
 if('speechSynthesis' in window){ window.speechSynthesis.onvoiceschanged=()=>window.speechSynthesis.getVoices(); window.speechSynthesis.getVoices(); }
 render('home',false);
