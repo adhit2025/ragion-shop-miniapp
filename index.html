@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#09080f">
+  <title>RAGION SHOP</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="splash" id="splash">
+    <div class="splash-glow"></div>
+    <img src="assets/logo.png" class="splash-logo" alt="RAGION SHOP">
+    <div class="splash-title">RAGION SHOP</div>
+    <div class="splash-sub">PREMIUM DIGITAL STORE</div>
+    <div class="loader"><span></span></div>
+  </div>
+
+  <div class="app" id="app">
+    <div class="ambient ambient-1"></div>
+    <div class="ambient ambient-2"></div>
+    <div class="grain"></div>
+
+    <header class="topbar glass">
+      <div class="brand-wrap">
+        <img src="assets/logo.png" class="top-logo" alt="RAGION SHOP">
+        <div>
+          <div class="brand-name">RAGION SHOP</div>
+          <div class="brand-sub">Premium Digital Store</div>
+        </div>
+      </div>
+      <button class="sound-btn" id="soundToggle" type="button" aria-label="Suara aktif">🔊</button>
+    </header>
+
+    <main class="screen">
+      <section class="hero-wrap">
+        <div class="hero-frame">
+          <div class="hero" id="hero">
+            <article class="hero-slide active"><img src="assets/banner1.png" alt="AI Tools"><div class="hero-shade"></div><div class="hero-copy"><span>01 · AI</span><b>AI TOOLS</b><small>Tools premium untuk kerja lebih cepat</small></div></article>
+            <article class="hero-slide"><img src="assets/banner2.png" alt="Digital Products"><div class="hero-shade"></div><div class="hero-copy"><span>02 · DIGITAL</span><b>DIGITAL PRODUCTS</b><small>Produk digital premium dalam satu toko</small></div></article>
+            <article class="hero-slide"><img src="assets/banner3.png" alt="Website Professional"><div class="hero-shade"></div><div class="hero-copy"><span>03 · WEBSITE</span><b>WEBSITE PROFESSIONAL</b><small>Modern · cepat · responsif</small></div></article>
+            <div class="hero-progress"><span id="heroProgress"></span></div>
+          </div>
+        </div>
+        <div class="dots" id="dots"></div>
+      </section>
+
+      <section class="ticker"><div class="ticker-dot"></div><div class="ticker-track"><span>RAGION SHOP</span><em>AI TOOLS</em><span>PRODUK DIGITAL</span><em>WEBSITE</em><span>ORDER CEPAT</span></div></section>
+
+      <section class="menu-grid" id="menuGrid">
+        <button class="menu-card" data-menu="order" data-label="Order"><span class="icon">🛍️</span><div><strong>ORDER</strong><small>Pilih produk</small></div><i>›</i></button>
+        <button class="menu-card" data-menu="price" data-label="Harga"><span class="icon">💰</span><div><strong>HARGA</strong><small>Daftar harga</small></div><i>›</i></button>
+        <button class="menu-card" data-menu="profile" data-label="Profil"><span class="icon">👤</span><div><strong>PROFIL</strong><small>Akun saya</small></div><i>›</i></button>
+        <button class="menu-card" data-menu="orders" data-label="Pesanan"><span class="icon">📦</span><div><strong>PESANAN</strong><small>Status order</small></div><i>›</i></button>
+        <button class="menu-card" data-menu="payment" data-label="Payment"><span class="icon">💳</span><div><strong>PAYMENT</strong><small>QRIS cepat</small></div><i>›</i></button>
+        <button class="menu-card" data-menu="info" data-label="Info"><span class="icon">ℹ️</span><div><strong>INFO</strong><small>Tentang toko</small></div><i>›</i></button>
+      </section>
+
+      <section class="content-panel" id="contentPanel">
+        <div class="panel-top">
+          <span class="panel-icon" id="panelIcon">✦</span>
+          <div><div class="panel-title" id="panelTitle">SELAMAT DATANG</div><div class="panel-sub" id="panelSub">Premium Digital Store</div></div>
+          <button class="mini-back" id="miniBack" type="button" aria-label="Kembali">⌃</button>
+        </div>
+        <div id="panelBody" class="panel-body"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav glass">
+      <button class="nav-btn active" data-menu="home" data-label="Menu utama"><span>⌂</span><small>Home</small></button>
+      <button class="nav-btn" data-menu="order" data-label="Order"><span>🛍</span><small>Order</small></button>
+      <button class="nav-btn" data-menu="price" data-label="Harga"><span>💰</span><small>Harga</small></button>
+      <button class="nav-btn" data-menu="profile" data-label="Profil"><span>👤</span><small>Profil</small></button>
+    </nav>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+{
+  "name":"ragion-shop-miniapp-v5-payment","version":"5.0.0","private":true,
+  "description":"RAGION SHOP Telegram Mini App with full order, payment proof upload and admin notification flow",
+  "dependencies":{"formidable":"^3.5.2"}
+}
